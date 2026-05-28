@@ -1,0 +1,15 @@
+# Environment
+.env
+
+# Celery
+celerybeat-schedule.db
+celerybeat.pid
+
+# Virtual environment
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
