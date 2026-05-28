@@ -52,7 +52,7 @@ MIDDLEWARE = [
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
-    "https://handout-six.vercel.app",
+    "https://handout-pay.vercel.app",
     "http://localhost:5173",
 ]
 CORS_ALLOW_CREDENTIALS = True
