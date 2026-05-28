@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import RegisterView, MeView,RepRegisterView
+from .views import RegisterView, MeView,RepRegisterView,clerk_auth
 from .serializers import StudentTokenObtainPairView  # 
 from django.http import JsonResponse
 
