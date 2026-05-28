@@ -3,6 +3,12 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import RegisterSerializer, UserSerializer,RepRegisterSerializer
 from .models import User
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
 class RegisterView(generics.CreateAPIView):
     queryset           = User.objects.all()
     serializer_class   = RegisterSerializer
@@ -22,3 +28,40 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+
+
+
+
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def clerk_auth(request):
+    email = request.data.get('email')
+    name = request.data.get('name', '')
+    clerk_id = request.data.get('clerk_id')
+
+    if not email:
+        return Response({'error': 'Email required'}, status=400)
+
+    # Get or create user by email
+    user, created = User.objects.get_or_create(
+        email=email,
+        defaults={
+            'name': name,
+            'role': 'student',  # default role for Google sign-in
+            'username': email.split('@')[0],
+        }
+    )
+
+    # Generate Django JWT tokens
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'role': user.role,
+        'name': user.name,
+        'id': user.id,
+    })
