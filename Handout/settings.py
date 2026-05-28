@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-crpt2fuahn@7jl361u%y8w9rm3m7)ruq0iawbu2iojj-5@w-jz
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+
 
 
 INSTALLED_APPS = [
@@ -52,13 +52,18 @@ MIDDLEWARE = [
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",   # Vite default
-    "http://localhost:3000",   # CRA default
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
+    "https://handout-six.vercel.app",
+    "http://localhost:5173",
 ]
 CORS_ALLOW_CREDENTIALS = True
 # ──────────────────────────────────────────────────────────────────────────────
+
+
+ALLOWED_HOSTS = [
+    "handout.pythonanywhere.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 ROOT_URLCONF = 'Handout.urls'
 
