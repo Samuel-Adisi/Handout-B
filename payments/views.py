@@ -33,10 +33,11 @@ class InitiatePaymentView(APIView):
 
             if ps_status == "success" or ps_message == "Charge attempted":
                 return Response({
-                    "message": "MoMo payment initiated.",
-                    "reference": payment.reference,
-                    "next_step": next_step or "send_otp",
-                }, status=status.HTTP_201_CREATED)
+                "message": "MoMo payment initiated.",
+                "reference": payment.reference,
+                "payment_id": str(payment.id),
+                "next_step": next_step or "send_otp",
+             }, status=status.HTTP_201_CREATED)
             else:
                 payment.status = "failed"
                 payment.save()
