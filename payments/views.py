@@ -82,11 +82,12 @@ class SubmitOTPView(APIView):
             print("SUBMIT OTP STATUS:", response.status_code)
             print("SUBMIT OTP RESPONSE:", data)
 
-            if ps_status == "success":
-                return Response(
-                    {"message": "Payment approved successfully."},
-                    status=status.HTTP_200_OK
-                )
+            if ps_status in ["success", None]:
+            return Response(
+                {"message": "Payment approved successfully."},
+                status=status.HTTP_200_OK
+            )
+
             elif ps_status == "pay_offline":
                 return Response(
                     {"message": "Please dial *170# to approve the payment."},
