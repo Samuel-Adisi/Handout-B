@@ -31,11 +31,11 @@ class InitiatePaymentView(APIView):
             ps_data     = ps_response.get("data", {})
             next_step   = ps_data.get("status")           # "send_otp", "success", "pay_offline"
 
-            if ps_status == "success":
+           if ps_status == "success" or ps_message == "Charge attempted":
                 return Response({
                     "message": "MoMo payment initiated.",
                     "reference": payment.reference,
-                    "next_step": next_step,
+                    "next_step": next_step or "send_otp",
                 }, status=status.HTTP_201_CREATED)
             else:
                 payment.status = "failed"
