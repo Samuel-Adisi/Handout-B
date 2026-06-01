@@ -34,7 +34,7 @@ def initiate_momo_payment(payment):
         "Content-Type":  "application/json",
     }
     payload = {
-        "email":        payment.student.email,
+        "email": f"{payment.student.student_id}@handoutpay.com",
         "amount":       int(float(payment.amount) * 100),  # Paystack uses pesewas
         "currency":     "GHS",
         "mobile_money": {
