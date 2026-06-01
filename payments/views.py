@@ -1,5 +1,6 @@
-import hashlib
 import hmac
+import hashlib
+import requests
 from django.conf import settings
 from django.utils import timezone
 from rest_framework.views import APIView
@@ -10,7 +11,6 @@ from rest_framework import status, generics
 from .models import Payment
 from .serializers import PaymentSerializer, PaymentStatusSerializer
 from .paystack import initiate_momo_payment, verify_payment
- # updated import
 from handouts.models import Handout
 
 
@@ -25,22 +25,23 @@ class InitiatePaymentView(APIView):
         payment = serializer.save()
 
         try:
-            flw_response = initiate_momo_payment(payment)
-            flw_status   = flw_response.get("status")      # "success" or "error"
-            flw_message  = flw_response.get("message", "")
+            ps_response = initiate_momo_payment(payment)
+            ps_status   = ps_response.get("status")       # "success" or "error"
+            ps_message  = ps_response.get("message", "")
+            ps_data     = ps_response.get("data", {})
+            next_step   = ps_data.get("status")           # "send_otp", "success", "pay_offline"
 
-            if flw_status == "success":
+            if ps_status == "success":
                 return Response({
-                    "message": "MoMo prompt sent. Approve on your phone or via SMS.",
+                    "message": "MoMo payment initiated.",
                     "reference": payment.reference,
-                    "flw_status": flw_status,
-                    "flw_message": flw_message,
+                    "next_step": next_step,
                 }, status=status.HTTP_201_CREATED)
             else:
                 payment.status = "failed"
                 payment.save()
                 return Response({
-                    "error": flw_message or "Payment initiation failed."
+                    "error": ps_message or "Payment initiation failed."
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
@@ -49,14 +50,61 @@ class InitiatePaymentView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
-class  FlutterwaveWebhookView(APIView):  # keep name or rename to FlutterwaveWebhookView
+class SubmitOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        otp       = request.data.get("otp")
+        reference = request.data.get("reference")
+
+        if not otp or not reference:
+            return Response(
+                {"error": "OTP and reference are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        url     = "https://api.paystack.co/charge/submit_otp"
+        headers = {
+            "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            "Content-Type":  "application/json",
+        }
+        payload = {"otp": otp, "reference": reference}
+
+        try:
+            response  = requests.post(url, json=payload, headers=headers)
+            data      = response.json()
+            ps_data   = data.get("data", {})
+            ps_status = ps_data.get("status")
+
+            print("SUBMIT OTP STATUS:", response.status_code)
+            print("SUBMIT OTP RESPONSE:", data)
+
+            if ps_status == "success":
+                return Response(
+                    {"message": "Payment approved successfully."},
+                    status=status.HTTP_200_OK
+                )
+            elif ps_status == "pay_offline":
+                return Response(
+                    {"message": "Please dial *170# to approve the payment."},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {"message": "OTP submitted. Waiting for confirmation.", "status": ps_status},
+                    status=status.HTTP_200_OK
+                )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+class PaystackWebhookView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # Verify Flutterwave signature
+        # Verify Paystack signature
         paystack_sig = request.headers.get("x-paystack-signature", "")
-        import hmac, hashlib
-        computed = hmac.new(
+        computed     = hmac.new(
             settings.PAYSTACK_SECRET_KEY.encode("utf-8"),
             request.body,
             hashlib.sha512,
@@ -71,8 +119,6 @@ class  FlutterwaveWebhookView(APIView):  # keep name or rename to FlutterwaveWeb
         if event == "charge.success":
             data      = payload.get("data", {})
             reference = data.get("reference")
-            currency  = data.get("currency")
-            amount    = data.get("amount")  # in pesewas
 
             try:
                 payment = Payment.objects.get(reference=reference)
