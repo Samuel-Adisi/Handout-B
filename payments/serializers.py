@@ -49,7 +49,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             elif existing.status in ["failed", "expired"]:
                 existing.delete()
 
+        # Replace:
         attrs["student"] = request.user
+        attrs["amount"]  = handout.price
         return attrs
 
 class PaymentStatusSerializer(serializers.ModelSerializer):
