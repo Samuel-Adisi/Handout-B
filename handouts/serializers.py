@@ -16,5 +16,20 @@ class HandoutSerializer(serializers.ModelSerializer):
         model  = Handout
         fields = ["id", "title", "description", "price", "stock", "in_stock", "is_active", "course", "course_id", "created_at"]
 
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        title = attrs.get("title")
+        price = attrs.get("price")
+
+        if not price:
+            raise serializers.ValidationError({"price": "Price cannot be empty"})
+
+        if not title:
+            raise serializers.ValidationError({"title":"Tile cannot be empty"})
+
+
+        return attrs
+
     def get_in_stock(self, obj):
         return obj.has_stock()
