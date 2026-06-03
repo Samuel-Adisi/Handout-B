@@ -35,6 +35,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 
+
     def validate_phone(self, value):
         phone = value.strip().replace(" ", "")
         if not phone.startswith("0") or len(phone) != 10 or not phone.isdigit():
