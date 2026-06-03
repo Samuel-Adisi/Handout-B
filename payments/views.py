@@ -177,6 +177,6 @@ class RepPaymentsView(generics.ListAPIView):
     serializer_class   = PaymentSerializer
 
     def get_queryset(self):
-        return Payment.objects.filter(
-            handout__rep=self.request.user
-        ).order_by("-created_at")
+    return Payment.objects.filter(
+        handout__course__rep=self.request.user
+    ).order_by("-created_at")eated_at")
