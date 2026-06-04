@@ -175,7 +175,8 @@ class MyPaymentsView(generics.ListAPIView):
 class RepPaymentsView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class   = PaymentSerializer
+
     def get_queryset(self):
         return Payment.objects.filter(
-            handout__course__rep=self.request.user
+            course__rep=self.request.user
         ).order_by("-created_at")
