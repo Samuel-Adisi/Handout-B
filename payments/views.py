@@ -114,9 +114,9 @@ class PaystackWebhookView(APIView):
         # Verify Paystack signature
         paystack_sig = request.headers.get("x-paystack-signature", "")
         computed = hmac.new(
-            settings.PAYSTACK_SECRET_KEY.encode("utf-8"),
-            request.body,
-            hashlib.sha512,
+        settings.PAYSTACK_SECRET_KEY.encode("utf-8"),
+        msg=request.body,
+        digestmod=hashlib.sha512,
         ).hexdigest()
 
         if paystack_sig != computed:
@@ -166,6 +166,17 @@ class PaymentStatusView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         return Payment.objects.filter(student=self.request.user)
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        reference = self.kwargs.get('pk')
+        try:
+            obj = queryset.get(reference=reference)
+            self.check_object_permissions(self.request, obj)
+            return obj
+        except Payment.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Payment not found.')
 
 
 class MyPaymentsView(generics.ListAPIView):
