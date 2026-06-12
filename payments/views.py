@@ -38,6 +38,7 @@ class InitiatePaymentView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
+
 class PaymentStatusView(generics.RetrieveAPIView):
     """
     GET /payments/<reference>/status/
