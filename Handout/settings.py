@@ -124,8 +124,8 @@ SIMPLE_JWT = {
 }
 
 # Celery
-CELERY_BROKER_URL     = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+CELERY_BROKER_URL     = config("REDIS_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = config("REDIS_URL", "redis://localhost:6379/0")
 CELERY_BEAT_SCHEDULE  = {
     "expire-pending-payments": {
         "task":     "payments.tasks.expire_pending_payments",
@@ -134,30 +134,24 @@ CELERY_BEAT_SCHEDULE  = {
 }
 
 # Hubtel SMS
-HUBTEL_CLIENT_ID     = os.getenv("HUBTEL_CLIENT_ID")
-HUBTEL_CLIENT_SECRET = os.getenv("HUBTEL_CLIENT_SECRET")
-HUBTEL_SENDER_ID     = os.getenv("HUBTEL_SENDER_ID", "Handout")
+HUBTEL_CLIENT_ID     = config("HUBTEL_CLIENT_ID")
+HUBTEL_CLIENT_SECRET = config("HUBTEL_CLIENT_SECRET")
+HUBTEL_SENDER_ID     = config("HUBTEL_SENDER_ID", "Handout")
 
 # Email
-DEFAULT_FROM_EMAIL  = os.getenv("DEFAULT_FROM_EMAIL", "noreply@handout.app")
+DEFAULT_FROM_EMAIL  = config("DEFAULT_FROM_EMAIL", "noreply@handout.app")
 EMAIL_BACKEND       = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST          = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_HOST          = config("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT          = 587
 EMAIL_USE_TLS       = True
-EMAIL_HOST_USER     = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER     = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 
-PAYSTACK_SECRET_KEY = config("PAYSTACK_SECRET_KEY")
 REP_INVITE_CODE     = config("REP_INVITE_CODE")
 
-
-PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
-
-
-
 # Remove PAYSTACK_SECRET_KEY, replace with:
-MOMO_CONSUMER_KEY    = os.getenv("MOMO_CONSUMER_KEY", "")
-MOMO_CONSUMER_SECRET = os.getenv("MOMO_CONSUMER_SECRET", "")
-MOMO_BASE_URL        = os.getenv("MOMO_BASE_URL", "https://api.mtn.com")
-MOMO_CURRENCY        = os.getenv("MOMO_CURRENCY", "GHS")
-MOMO_CALLBACK_URL    = os.getenv("MOMO_CALLBACK_URL", "")
+MOMO_CONSUMER_KEY    = config("MOMO_CONSUMER_KEY", "")
+MOMO_CONSUMER_SECRET = config("MOMO_CONSUMER_SECRET", "")
+MOMO_BASE_URL        = config("MOMO_BASE_URL", "https://api.mtn.com")
+MOMO_CURRENCY        = config("MOMO_CURRENCY", "GHS")
+MOMO_CALLBACK_URL    = config("MOMO_CALLBACK_URL", "")
