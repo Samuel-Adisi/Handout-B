@@ -35,5 +35,5 @@ class Payment(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = f"HO-{uuid.uuid4().hex[:12].upper()}"
+            self.reference = str(uuid.uuid4())
         super().save(*args, **kwargs)
