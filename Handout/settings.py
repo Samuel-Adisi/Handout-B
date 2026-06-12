@@ -151,13 +151,13 @@ PAYSTACK_SECRET_KEY = config("PAYSTACK_SECRET_KEY")
 REP_INVITE_CODE     = config("REP_INVITE_CODE")
 
 
-PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY")
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 
 
 
 # Remove PAYSTACK_SECRET_KEY, replace with:
-MOMO_CONSUMER_KEY    = os.environ.get("MOMO_CONSUMER_KEY", "")
-MOMO_CONSUMER_SECRET = os.environ.get("MOMO_CONSUMER_SECRET", "")
-MOMO_BASE_URL        = os.environ.get("MOMO_BASE_URL", "https://api.mtn.com")
-MOMO_CURRENCY        = os.environ.get("MOMO_CURRENCY", "GHS")
-MOMO_CALLBACK_URL    = os.environ.get("MOMO_CALLBACK_URL", "")
+MOMO_CONSUMER_KEY    = os.getenv("MOMO_CONSUMER_KEY", "")
+MOMO_CONSUMER_SECRET = os.getenv("MOMO_CONSUMER_SECRET", "")
+MOMO_BASE_URL        = os.getenv("MOMO_BASE_URL", "https://api.mtn.com")
+MOMO_CURRENCY        = os.getenv("MOMO_CURRENCY", "GHS")
+MOMO_CALLBACK_URL    = os.getenv("MOMO_CALLBACK_URL", "")

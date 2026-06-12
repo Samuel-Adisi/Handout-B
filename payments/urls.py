@@ -13,5 +13,5 @@ urlpatterns = [
     path("rep/",           RepPaymentsView.as_view(),     name="rep-payments"),
     path("<str:pk>/status/", PaymentStatusView.as_view(), name="payment-status"),
     path("callback/",      MoMoCallbackView.as_view(),    name="momo-callback"),
-    # SubmitOTPView and PaystackWebhookView removed
+    
 ]
