@@ -20,10 +20,14 @@ def _get_access_token() -> str:
         headers={
             "Authorization": f"Basic {credentials}",
             "Content-Type":  "application/x-www-form-urlencoded",
+
         },
         timeout=10,
-    )
+     
+        proxies={"http": None, "https": None}, 
+)
     
+
     resp.raise_for_status()
     return resp.json()["access_token"]
 
@@ -68,6 +72,7 @@ def initiate_momo_payment(payment) -> dict:
             "transactionId":  correlator,    # idempotency header
         },
         timeout=15,
+         proxies={"http": None, "https": None}, 
     )
 
     print("MTN MOMO STATUS:", resp.status_code)
@@ -94,6 +99,7 @@ def verify_payment(reference: str) -> dict:
             "transactionId": reference,
         },
         timeout=10,
+        proxies={"http": None, "https": None}, 
     )
     resp.raise_for_status()
     return resp.json()
