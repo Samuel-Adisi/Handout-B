@@ -60,7 +60,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 
 ALLOWED_HOSTS = [
-    "handout.pythonanywhere.com",
+    "handout-b.onrender.com",
     "localhost",
     "127.0.0.1",
 ]
