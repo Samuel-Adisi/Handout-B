@@ -23,6 +23,7 @@ def _get_access_token() -> str:
         },
         timeout=10,
     )
+    
     resp.raise_for_status()
     return resp.json()["access_token"]
 
