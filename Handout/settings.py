@@ -133,19 +133,6 @@ CELERY_BEAT_SCHEDULE  = {
     },
 }
 
-# Hubtel SMS
-HUBTEL_CLIENT_ID     = config("HUBTEL_CLIENT_ID")
-HUBTEL_CLIENT_SECRET = config("HUBTEL_CLIENT_SECRET")
-HUBTEL_SENDER_ID     = config("HUBTEL_SENDER_ID", "Handout")
-
-# Email
-DEFAULT_FROM_EMAIL  = config("DEFAULT_FROM_EMAIL", "noreply@handout.app")
-EMAIL_BACKEND       = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST          = config("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT          = 587
-EMAIL_USE_TLS       = True
-EMAIL_HOST_USER     = config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 
 REP_INVITE_CODE     = config("REP_INVITE_CODE")
 
