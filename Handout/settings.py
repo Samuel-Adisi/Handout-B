@@ -14,7 +14,12 @@ SECRET_KEY = 'django-insecure-crpt2fuahn@7jl361u%y8w9rm3m7)ruq0iawbu2iojj-5@w-jz
 
 DEBUG = True
 
+import os
 
+os.environ.pop("HTTP_PROXY", None)
+os.environ.pop("HTTPS_PROXY", None)
+os.environ.pop("ALL_PROXY", None)
+os.environ["NO_PROXY"] = "*"
 
 
 INSTALLED_APPS = [
