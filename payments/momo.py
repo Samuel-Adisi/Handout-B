@@ -2,7 +2,7 @@ import base64
 import requests
 from django.conf import settings
 
-MOMO_BASE_URL     = getattr(settings, "MOMO_BASE_URL",     "https://api.mtn.com")
+MOMO_BASE_URL     = getattr(settings, "MOMO_BASE_URL",     "https://momoapi.mtn.com")
 MOMO_CURRENCY     = getattr(settings, "MOMO_CURRENCY",     "GHS")
 MOMO_CALLBACK_URL = getattr(settings, "MOMO_CALLBACK_URL", "")
 
