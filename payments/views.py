@@ -21,6 +21,7 @@ class InitiatePaymentView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         payment = serializer.save()
+        
 
         try:
             initiate_momo_payment(payment)
