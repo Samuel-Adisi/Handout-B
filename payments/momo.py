@@ -1,11 +1,10 @@
-import uuid
 import base64
 import requests
 from django.conf import settings
 
 MOMO_BASE_URL     = getattr(settings, "MOMO_BASE_URL",     "https://api.mtn.com")
 MOMO_CURRENCY     = getattr(settings, "MOMO_CURRENCY",     "GHS")
-MOMO_CALLBACK_URL = getattr(settings, "MOMO_CALLBACK_URL", "https://handout.pythonanywhere.com/api/payments/callback/")
+MOMO_CALLBACK_URL = getattr(settings, "MOMO_CALLBACK_URL", "")
 
 
 def _get_access_token() -> str:
@@ -18,16 +17,12 @@ def _get_access_token() -> str:
         f"{MOMO_BASE_URL}/v1/oauth/access_token",
         params={"grant_type": "client_credentials"},
         headers={
-            "Authorization": f"Basic {credentials}",
-            "Content-Type":  "application/x-www-form-urlencoded",
-
+            "Authorization":             f"Basic {credentials}",
+            "Content-Type":              "application/x-www-form-urlencoded",
+            "Ocp-Apim-Subscription-Key": settings.MOMO_SUBSCRIPTION_KEY,
         },
         timeout=10,
-     
-        proxies={"http": None, "https": None}, 
-)
-    
-
+    )
     resp.raise_for_status()
     return resp.json()["access_token"]
 
@@ -43,20 +38,16 @@ def _to_msisdn(phone: str) -> str:
 
 
 def initiate_momo_payment(payment) -> dict:
-    """
-    POST /v2/payments
-    Sends a USSD push to the payer's handset.
-    payment.reference must be a UUID4.
-    """
-    token       = _get_access_token()
-    msisdn      = _to_msisdn(payment.momo_number)
-    correlator  = str(payment.reference)   # UUID4 used as idempotency key
+    """POST /v2/payments — sends a USSD push to the payer's handset."""
+    token      = _get_access_token()
+    msisdn     = _to_msisdn(payment.momo_number)
+    correlator = str(payment.reference)
 
     payload = {
         "amount":             str(int(float(payment.amount))),
         "currency":           MOMO_CURRENCY,
         "customerInfo":       {"customerMsisdn": msisdn},
-        "serviceCode":        "MP",           # MoMo Pay
+        "serviceCode":        "MP",
         "paymentMethod":      "MoMo",
         "paymentDescription": f"Payment for {payment.handout.title}",
         "correlatorId":       correlator,
@@ -67,18 +58,17 @@ def initiate_momo_payment(payment) -> dict:
         f"{MOMO_BASE_URL}/v2/payments",
         json=payload,
         headers={
-            "Authorization":  f"Bearer {token}",
-            "Content-Type":   "application/json",
-            "transactionId":  correlator,    # idempotency header
+            "Authorization":             f"Bearer {token}",
+            "Content-Type":              "application/json",
+            "transactionId":             correlator,
+            "Ocp-Apim-Subscription-Key": settings.MOMO_SUBSCRIPTION_KEY,
         },
         timeout=15,
-         proxies={"http": None, "https": None}, 
     )
 
     print("MTN MOMO STATUS:", resp.status_code)
     print("MTN MOMO BODY:",   resp.text)
 
-    # 200 or 202 = request accepted, USSD push sent
     if resp.status_code not in (200, 202):
         resp.raise_for_status()
 
@@ -86,20 +76,17 @@ def initiate_momo_payment(payment) -> dict:
 
 
 def verify_payment(reference: str) -> dict:
-    """
-    GET /v2/payments/{correlatorId}
-    Returns status: PENDING | SUCCESSFUL | FAILED | CANCELLED
-    """
+    """GET /v2/payments/{correlatorId} — returns PENDING | SUCCESSFUL | FAILED | CANCELLED"""
     token = _get_access_token()
 
     resp = requests.get(
         f"{MOMO_BASE_URL}/v2/payments/{reference}",
         headers={
-            "Authorization": f"Bearer {token}",
-            "transactionId": reference,
+            "Authorization":             f"Bearer {token}",
+            "transactionId":             reference,
+            "Ocp-Apim-Subscription-Key": settings.MOMO_SUBSCRIPTION_KEY,
         },
         timeout=10,
-        proxies={"http": None, "https": None}, 
     )
     resp.raise_for_status()
     return resp.json()
