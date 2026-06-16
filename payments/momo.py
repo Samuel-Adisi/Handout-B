@@ -19,7 +19,7 @@ def _get_access_token() -> str:
         headers={
             "Authorization":             f"Basic {credentials}",
             "Content-Type":              "application/x-www-form-urlencoded",
-            "Ocp-Apim-Subscription-Key": settings.MOMO_SUBSCRIPTION_KEY,
+           
         },
         timeout=10,
     )
@@ -84,7 +84,7 @@ def verify_payment(reference: str) -> dict:
         headers={
             "Authorization":             f"Bearer {token}",
             "transactionId":             reference,
-            "Ocp-Apim-Subscription-Key": settings.MOMO_SUBSCRIPTION_KEY,
+            
         },
         timeout=10,
     )
