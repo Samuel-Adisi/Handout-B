@@ -8,7 +8,6 @@ MOMO_CALLBACK_URL = getattr(settings, "MOMO_CALLBACK_URL", "")
 
 
 def _get_access_token() -> str:
-    """OAuth2 client_credentials flow using Consumer Key + Secret."""
     credentials = base64.b64encode(
         f"{settings.MOMO_CONSUMER_KEY}:{settings.MOMO_CONSUMER_SECRET}".encode()
     ).decode()
@@ -17,14 +16,20 @@ def _get_access_token() -> str:
         f"{MOMO_BASE_URL}/v1/oauth/access_token",
         params={"grant_type": "client_credentials"},
         headers={
-            "Authorization":             f"Basic {credentials}",
-            "Content-Type":              "application/x-www-form-urlencoded",
-           
+            "Authorization": f"Basic {credentials}",
+            "Content-Type":  "application/x-www-form-urlencoded",
         },
         timeout=10,
     )
+
+    # Temporary debug — remove after fixing
+    print("MTN TOKEN STATUS:", resp.status_code)
+    print("MTN TOKEN HEADERS:", dict(resp.headers))
+    print("MTN TOKEN BODY:", resp.text)
+
     resp.raise_for_status()
     return resp.json()["access_token"]
+
 
 
 def _to_msisdn(phone: str) -> str:
