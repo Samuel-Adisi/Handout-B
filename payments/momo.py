@@ -7,6 +7,8 @@ MOMO_CURRENCY     = getattr(settings, "MOMO_CURRENCY",     "GHS")
 MOMO_CALLBACK_URL = getattr(settings, "MOMO_CALLBACK_URL", "")
 
 
+
+
 def _get_access_token() -> str:
     credentials = base64.b64encode(
         f"{settings.MOMO_CONSUMER_KEY}:{settings.MOMO_CONSUMER_SECRET}".encode()
