@@ -14,7 +14,9 @@ SECRET_KEY = 'django-insecure-crpt2fuahn@7jl361u%y8w9rm3m7)ruq0iawbu2iojj-5@w-jz
 
 DEBUG = True
 
+
 import os
+print("PROXY CHECK:", os.environ.get("HTTP_PROXY"), os.environ.get("HTTPS_PROXY"), os.environ.get("NO_PROXY"))
 
 os.environ.pop("HTTP_PROXY", None)
 os.environ.pop("HTTPS_PROXY", None)
