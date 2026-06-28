@@ -2,7 +2,7 @@ from rest_framework import generics, permissions
 from .models import Handout
 from .serializers import HandoutSerializer
 from department.models import Department
-from school.models import School
+
 
 class IsRepOrAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -17,7 +17,6 @@ class HandoutListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user     = self.request.user
         department =Department.objects.get(user=user)
-        school = School.objects.get()
         course   = self.request.query_params.get("course")
         queryset = Handout.objects.select_related("course").filter(is_active=True)  # ← fixed
 
