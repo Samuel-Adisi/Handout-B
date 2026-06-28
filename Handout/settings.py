@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     "handouts",
     "payments",
     "notifications",
+    "department",
+    "school"
 ]
 
 AUTH_USER_MODEL = "accounts.User"
