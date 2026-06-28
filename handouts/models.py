@@ -1,11 +1,14 @@
 from django.db import models
 from courses.models import Course
+from department.models import Department
+
 
 
 class Handout(models.Model):
     course      = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="handouts")
     title       = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE)
     price       = models.DecimalField(max_digits=8, decimal_places=2)
     stock       = models.PositiveIntegerField(default=0, blank=True, null=True)
     is_active   = models.BooleanField(default=True)

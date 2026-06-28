@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from school.models import School
+from department.models import Department
 
 class UserManager(BaseUserManager):
     def create_user(self, student_id, password=None, **extra_fields):
@@ -25,6 +27,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     student_id  = models.CharField(max_length=20, unique=True)
     name        = models.CharField(max_length=150)
     phone       = models.CharField(max_length=15)
+    school     = models.ForeignKey(School, on_delete=models.CASCADE)
+    department  = models.ForeignKey(Department, on_delete=models.CASCADE)
     role        = models.CharField(max_length=10, choices=ROLE_CHOICES, default="student")
     is_active   = models.BooleanField(default=True)
     is_staff    = models.BooleanField(default=False)
