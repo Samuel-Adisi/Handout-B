@@ -1,5 +1,4 @@
 from django.db import models
-from accounts.models import User
 
 # Create your models here.
 
@@ -10,7 +9,7 @@ class Department(models.Model):
                        ("btech", "BTECH")
                        ]
     name = models.CharField(max_length=100, blank=False,null=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey("User", on_delete=models.CASCADE)
     department_type = models. CharField(choices=DEPARTMENT_TYPE, blank=False)
     created_by = models.ForeignKey(User , on_delete=models.CASCADE)
     is_active = models.BooleanField(default=False)
