@@ -14,6 +14,15 @@ class UserManager(BaseUserManager):
     def create_superuser(self, student_id, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
+        # Without this a superuser is created with role="student" and is then
+        # refused by every IsRepOrAdmin check in the API.
+        extra_fields.setdefault("role", "admin")
+
+        if extra_fields["is_staff"] is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields["is_superuser"] is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+
         return self.create_user(student_id, password, **extra_fields)
 
 
