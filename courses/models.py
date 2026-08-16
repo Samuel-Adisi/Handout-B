@@ -10,5 +10,9 @@ class Course(models.Model):
     is_active   = models.BooleanField(default=True)
     created_at  = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        # Without a deterministic order, paginated pages can repeat or drop rows.
+        ordering = ["code"]
+
     def __str__(self):
         return f"{self.code} - {self.name}"
