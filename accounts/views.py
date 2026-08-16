@@ -1,19 +1,29 @@
 from rest_framework import generics, permissions
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import RegisterSerializer, UserSerializer,RepRegisterSerializer
-from .models import User
-
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .models import User
+from .serializers import (
+    RegisterSerializer,
+    RepRegisterSerializer,
+    StudentTokenObtainPairSerializer,
+    UserSerializer,
+)
+
+
+class StudentTokenObtainPairView(TokenObtainPairView):
+    """Login by student_id instead of username."""
+
+    serializer_class = StudentTokenObtainPairSerializer
 
 
 class RegisterView(generics.CreateAPIView):
     queryset           = User.objects.all()
     serializer_class   = RegisterSerializer
     permission_classes = [permissions.AllowAny]
-
 
 
 class RepRegisterView(generics.CreateAPIView):
@@ -26,14 +36,11 @@ class MeView(generics.RetrieveUpdateAPIView):
     serializer_class   = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        return User.objects.select_related("department")
+
     def get_object(self):
         return self.request.user
-
-
-
-
-
-
 
 
 @api_view(['POST'])
