@@ -1,10 +1,19 @@
+import logging
+
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
 
+logger = logging.getLogger(__name__)
 
-def send_sms(phone, message):
-    url = "https://api.hubtel.com/v1/messages/send"
+HUBTEL_URL = "https://sms.hubtel.com/v1/messages/send"
+TIMEOUT = 10
+
+
+def send_sms(phone, message) -> bool:
+    if not (settings.HUBTEL_CLIENT_ID and settings.HUBTEL_CLIENT_SECRET):
+        logger.warning("Hubtel is not configured; skipping SMS to %s", phone)
+        return False
 
     params = {
         "clientsecret": settings.HUBTEL_CLIENT_SECRET,
@@ -15,15 +24,20 @@ def send_sms(phone, message):
     }
 
     try:
-        response = requests.get(url, params=params)
+        # timeout: without one a hung Hubtel connection blocks a worker forever.
+        response = requests.get(HUBTEL_URL, params=params, timeout=TIMEOUT)
         response.raise_for_status()
         return True
-    except requests.RequestException as e:
-        print(f"SMS failed: {e}")
+    except requests.RequestException as exc:
+        # Log the exception, not the response: params carry the client secret.
+        logger.warning("SMS to %s failed: %s", phone, exc)
         return False
 
 
-def send_email(to_email, subject, message):
+def send_email(to_email, subject, message) -> bool:
+    if not to_email:
+        return False
+
     try:
         send_mail(
             subject=subject,
@@ -33,6 +47,6 @@ def send_email(to_email, subject, message):
             fail_silently=False,
         )
         return True
-    except Exception as e:
-        print(f"Email failed: {e}")
+    except Exception as exc:
+        logger.warning("Email to %s failed: %s", to_email, exc)
         return False

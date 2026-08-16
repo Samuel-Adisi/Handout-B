@@ -1,22 +1,53 @@
-from celery import shared_task
+import logging
 
-@shared_task
-def send_receipt(payment_id):
-    from payments.models import Payment
+from celery import shared_task
+from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+
+
+def _record(recipient, payment, message, sent):
     from .models import Notification
-    from .utils import send_sms, send_email
-    from django.utils import timezone
+
+    Notification.objects.create(
+        recipient=recipient,
+        payment=payment,
+        type="receipt",
+        channel="sms",
+        message=message,
+        # Record what actually happened. Previously every notification was
+        # written with sent=True even when the SMS gateway had refused it.
+        sent=sent,
+        sent_at=timezone.now() if sent else None,
+    )
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_receipt(self, payment_id):
+    """SMS the student and their course rep once a payment is confirmed."""
+    from payments.models import Payment
+
+    from .utils import send_sms
 
     try:
         payment = Payment.objects.select_related(
             "student", "handout", "handout__course", "handout__course__rep"
         ).get(id=payment_id)
     except Payment.DoesNotExist:
+        logger.warning("Receipt requested for unknown payment %s", payment_id)
         return "Payment not found"
+
+    if payment.status != "successful":
+        # Only confirmed payments get a receipt.
+        return "Payment not confirmed"
 
     student = payment.student
     rep     = payment.handout.course.rep
     handout = payment.handout
+
+    # confirmed_at is set in the same transaction as the status, but fall back
+    # rather than raising AttributeError on None if that ever drifts.
+    confirmed = (payment.confirmed_at or timezone.now()).strftime("%d %b %Y %H:%M")
 
     student_message = (
         f"Payment confirmed!\n"
@@ -24,7 +55,7 @@ def send_receipt(payment_id):
         f"Course:  {handout.course.code}\n"
         f"Amount:  GHS {payment.amount}\n"
         f"Ref:     {payment.reference}\n"
-        f"Date:    {payment.confirmed_at.strftime('%d %b %Y %H:%M')}"
+        f"Date:    {confirmed}"
     )
 
     rep_message = (
@@ -33,50 +64,13 @@ def send_receipt(payment_id):
         f"Handout: {handout.title}\n"
         f"Amount:  GHS {payment.amount}\n"
         f"Ref:     {payment.reference}\n"
-        f"Date:    {payment.confirmed_at.strftime('%d %b %Y %H:%M')}"
+        f"Date:    {confirmed}"
     )
 
-    now = timezone.now()
+    student_sent = send_sms(student.phone, student_message)
+    _record(student, payment, student_message, student_sent)
 
-    # --- notify student via SMS ---
-    send_sms(student.phone, student_message)
-    Notification.objects.create(
-        recipient=student,
-        payment=payment,
-        type="receipt",
-        channel="sms",
-        message=student_message,
-        sent=True,
-        sent_at=now,
-    )
-
-    # --- notify student via email if they have one ---
-    if student.email:
-        send_email(
-            to=student.email,
-            subject=f"Payment Receipt - {handout.title}",
-            message=student_message
-        )
-        Notification.objects.create(
-            recipient=student,
-            payment=payment,
-            type="receipt",
-            channel="email",
-            message=student_message,
-            sent=True,
-            sent_at=now,
-        )
-
-    # --- notify rep via SMS ---
-    send_sms(rep.phone, rep_message)
-    Notification.objects.create(
-        recipient=rep,
-        payment=payment,
-        type="receipt",
-        channel="sms",
-        message=rep_message,
-        sent=True,
-        sent_at=now,
-    )
+    rep_sent = send_sms(rep.phone, rep_message)
+    _record(rep, payment, rep_message, rep_sent)
 
     return f"Receipts sent for payment {payment_id}"
