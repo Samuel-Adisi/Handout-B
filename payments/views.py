@@ -1,150 +1,148 @@
-import requests
+import logging
+
 from django.conf import settings
-from django.utils import timezone
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework import status, generics
+from django.utils.crypto import constant_time_compare
+from rest_framework import generics, status
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from accounts.permissions import is_admin
 
 from .models import Payment
+from .momo import MoMoError, initiate_momo_payment, verify_payment
 from .serializers import PaymentSerializer, PaymentStatusSerializer
-from .momo import initiate_momo_payment, verify_payment
+from .services import apply_momo_status
+
+logger = logging.getLogger(__name__)
 
 
 class InitiatePaymentView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope     = "payment"
 
     def post(self, request):
         serializer = PaymentSerializer(data=request.data, context={"request": request})
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        serializer.is_valid(raise_exception=True)
         payment = serializer.save()
-        
 
         try:
             initiate_momo_payment(payment)
-            return Response(
-                {
-                    "message": "MoMo payment initiated. Check your phone to approve.",
-                    "reference": str(payment.reference),
-                    "payment_id": str(payment.id),
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        except Exception as e:
+        except MoMoError as exc:
             payment.status = "failed"
             payment.save(update_fields=["status"])
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+            logger.warning("Payment %s could not be initiated: %s", payment.reference, exc)
+            return Response({"error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
+        return Response(
+            {
+                "message":    "MoMo payment initiated. Check your phone to approve.",
+                "reference":  str(payment.reference),
+                "payment_id": str(payment.id),
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class PaymentStatusView(generics.RetrieveAPIView):
-    """
-    GET /payments/<reference>/status/
-    Polls MTN and syncs the local Payment status.
-    """
+    """GET /api/payments/<reference>/status/ — reconciles with MTN if pending."""
+
     permission_classes = [IsAuthenticated]
-    serializer_class = PaymentStatusSerializer
+    serializer_class   = PaymentStatusSerializer
 
     def get_object(self):
-        reference = self.kwargs.get("pk")
         try:
-            payment = Payment.objects.get(reference=reference, student=self.request.user)
+            payment = Payment.objects.get(
+                reference=self.kwargs["pk"], student=self.request.user
+            )
         except Payment.DoesNotExist:
             raise NotFound("Payment not found.")
 
-        # Already resolved — skip the MTN call
-        if payment.status in ("successful", "failed", "expired"):
+        if payment.status in Payment.FINAL_STATUSES:
             return payment
 
         try:
-            result     = verify_payment(str(payment.reference))
-            mtn_status = result.get("status", "PENDING").upper()
+            result = verify_payment(str(payment.reference))
+        except MoMoError as exc:
+            # Upstream trouble is not the client's problem; report what we know.
+            logger.info("Could not refresh %s: %s", payment.reference, exc)
+            return payment
 
-            if mtn_status == "SUCCESSFUL":
-                payment.status       = "successful"
-                payment.confirmed_at = timezone.now()
-                payment.save(update_fields=["status", "confirmed_at"])
-
-                # Decrement stock
-                handout = payment.handout
-                if handout.stock > 0:
-                    handout.stock -= 1
-                    handout.save(update_fields=["stock"])
-
-            elif mtn_status in ("FAILED", "CANCELLED"):
-                payment.status = "failed"
-                payment.save(update_fields=["status"])
-
-            # PENDING → leave as-is, frontend keeps polling
-
-        except Exception as e:
-            print("MTN verify error:", e)
-
+        payment = apply_momo_status(payment, result.get("status"))
+        payment.refresh_from_db()
         return payment
 
 
 class MoMoCallbackView(APIView):
+    """POST /api/payments/callback/ — MTN's asynchronous result notification.
+
+    The callback body is treated purely as a hint that something changed. The
+    endpoint is public and unauthenticated, so believing its `status` field
+    meant anyone could POST their own reference with status SUCCESSFUL and
+    collect the handout without paying. Every notification is re-verified
+    against MTN before any state changes.
     """
-    POST /api/payments/callback/
-    MTN posts the final transaction result here (matches portal callback URL).
-    """
+
     permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope     = "callback"
 
     def post(self, request):
-        data       = request.data
-        mtn_status = str(data.get("status", "")).upper()
+        expected = settings.MOMO_CALLBACK_TOKEN
+        if expected and not constant_time_compare(
+            request.headers.get("X-Callback-Token", ""), expected
+        ):
+            logger.warning("Rejected MoMo callback with a bad token.")
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
-        # MTN sends correlatorId or transactionId as the reference
         reference = (
-            data.get("correlatorId")
-            or data.get("transactionId")
-            or data.get("externalId")
+            request.data.get("correlatorId")
+            or request.data.get("transactionId")
+            or request.data.get("externalId")
         )
-
-        print("MTN CALLBACK DATA:", data)
-
         if not reference:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         try:
             payment = Payment.objects.get(reference=reference)
         except Payment.DoesNotExist:
-            return Response(status=status.HTTP_200_OK)  # ack, ignore unknown refs
+            # Acknowledge unknown references so MTN stops retrying, but say
+            # nothing about whether the reference exists.
+            return Response(status=status.HTTP_200_OK)
 
-        if mtn_status == "SUCCESSFUL" and payment.status != "successful":
-            payment.status       = "successful"
-            payment.confirmed_at = timezone.now()
-            payment.save(update_fields=["status", "confirmed_at"])
+        if payment.status in Payment.FINAL_STATUSES:
+            return Response(status=status.HTTP_200_OK)
 
-            handout = payment.handout
-            if handout.stock > 0:
-                handout.stock -= 1
-                handout.save(update_fields=["stock"])
+        try:
+            result = verify_payment(str(payment.reference))
+        except MoMoError as exc:
+            logger.warning("Callback for %s could not be verified: %s", reference, exc)
+            # 503 asks MTN to retry rather than dropping the notification.
+            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        elif mtn_status in ("FAILED", "CANCELLED") and payment.status == "pending":
-            payment.status = "failed"
-            payment.save(update_fields=["status"])
-
+        apply_momo_status(payment, result.get("status"))
         return Response(status=status.HTTP_200_OK)
 
 
 class MyPaymentsView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = PaymentSerializer
+    serializer_class   = PaymentSerializer
 
     def get_queryset(self):
-        return Payment.objects.filter(student=self.request.user).order_by("-created_at")
-
+        return Payment.objects.filter(student=self.request.user).select_related(
+            "student", "handout", "handout__course", "handout__course__rep"
+        )
 
 
 class RepPaymentsView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = PaymentSerializer
+    serializer_class   = PaymentSerializer
 
     def get_queryset(self):
-        return Payment.objects.filter(
-            handout__course__rep=self.request.user
-        ).order_by("-created_at")
+        queryset = Payment.objects.select_related(
+            "student", "handout", "handout__course", "handout__course__rep"
+        )
+        if is_admin(self.request.user):
+            return queryset
+        return queryset.filter(handout__course__rep=self.request.user)
