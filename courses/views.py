@@ -1,3 +1,4 @@
+from django.db.models import Count, Q
 from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
@@ -7,16 +8,38 @@ from .models import Course
 from .serializers import CourseSerializer
 
 
-class CourseListCreateView(generics.ListCreateAPIView):
+class CourseScopeMixin:
+    """Limits courses to what the caller is entitled to see."""
+
+    def get_queryset(self):
+        user     = self.request.user
+        queryset = (
+            Course.objects
+            .select_related("rep", "rep__department")
+            # Annotated so CourseSerializer.handout_count does not issue one
+            # extra query per course in the list response.
+            .annotate(
+                active_handout_count=Count(
+                    "handouts", filter=Q(handouts__is_active=True), distinct=True
+                )
+            )
+        )
+
+        if is_admin(user):
+            return queryset
+        if user.role == "rep":
+            return queryset.filter(rep=user)
+        if user.department_id is None:
+            return queryset.none()
+        return queryset.filter(rep__department_id=user.department_id)
+
+
+class CourseListCreateView(CourseScopeMixin, generics.ListCreateAPIView):
     serializer_class   = CourseSerializer
     permission_classes = [permissions.IsAuthenticated, IsRepOrAdmin]
 
     def get_queryset(self):
-        user = self.request.user
-        qs   = Course.objects.select_related("rep", "rep__department")
-        if user.role == "rep":
-            return qs.filter(rep=user, is_active=True)
-        return qs.filter(is_active=True)
+        return super().get_queryset().filter(is_active=True)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -25,16 +48,13 @@ class CourseListCreateView(generics.ListCreateAPIView):
             serializer.save(rep=user)
             return
         if not serializer.validated_data.get("rep"):
-            raise ValidationError(
-                {"rep_id": "Admins must nominate the course rep."}
-            )
+            raise ValidationError({"rep_id": "Admins must nominate the course rep."})
         serializer.save()
 
 
-class CourseDetailView(generics.RetrieveUpdateDestroyAPIView):
+class CourseDetailView(CourseScopeMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class   = CourseSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwningRepOrAdmin]
-    queryset           = Course.objects.select_related("rep", "rep__department")
     owner_field        = "rep"
 
     def perform_update(self, serializer):
