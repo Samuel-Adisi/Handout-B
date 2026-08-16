@@ -3,12 +3,26 @@ primary_region = "lhr"
 
 [build]
 
+[deploy]
+  # Migrations run once per release rather than in every starting machine.
+  release_command = "python manage.py migrate --noinput"
+
+[env]
+  PORT = "8000"
+
 [http_service]
   internal_port = 8000
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/api/accounts/ping/"
 
 [[vm]]
   memory = "512mb"
