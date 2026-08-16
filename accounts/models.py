@@ -26,7 +26,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     student_id  = models.CharField(max_length=20, unique=True)
     name        = models.CharField(max_length=150)
     phone       = models.CharField(max_length=15)
-    department  = models.ForeignKey(Department, on_delete=models.CASCADE)
+    # Nullable so that superusers (and pre-existing rows) can exist without a
+    # department; the registration API still requires one for students and reps.
+    department  = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        related_name="users",
+        null=True,
+        blank=True,
+    )
     role        = models.CharField(max_length=10, choices=ROLE_CHOICES, default="student")
     is_active   = models.BooleanField(default=True)
     is_staff    = models.BooleanField(default=False)
