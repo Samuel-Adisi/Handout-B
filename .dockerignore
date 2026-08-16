@@ -1,7 +1,14 @@
 .env
+.env.*
 __pycache__
 *.pyc
 *.pyo
 .git
+.gitignore
 venv
+.venv
 env
+*.sqlite3
+staticfiles
+.DS_Store
+IMPROVEMENT.md

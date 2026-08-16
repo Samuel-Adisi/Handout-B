@@ -1,15 +1,31 @@
 # Environment
 .env
+.env.*
+!.env.example
+
+# Database — never commit; it holds real user rows and password hashes
+*.sqlite3
+*.sqlite3-journal
 
 # Celery
-celerybeat-schedule.db
+celerybeat-schedule*
 celerybeat.pid
 
 # Virtual environment
 venv/
+.venv/
+env/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Django
+staticfiles/
+media/
+
+# OS
+.DS_Store
+Thumbs.db
